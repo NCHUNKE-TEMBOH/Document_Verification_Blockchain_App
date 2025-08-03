@@ -37,28 +37,28 @@ export function FileUpload() {
     // Hash files
     for (let i = 0; i < newFiles.length; i++) {
       const fileIndex = uploadedFiles.length + i
-      
-      setUploadedFiles(prev => 
-        prev.map((f, idx) => 
+
+      setUploadedFiles(prev =>
+        prev.map((f, idx) =>
           idx === fileIndex ? { ...f, status: 'hashing' } : f
         )
       )
 
       try {
         const hash = await hashFile(newFiles[i].file)
-        
-        setUploadedFiles(prev => 
-          prev.map((f, idx) => 
+
+        setUploadedFiles(prev =>
+          prev.map((f, idx) =>
             idx === fileIndex ? { ...f, hash, status: 'pending' } : f
           )
         )
       } catch (error) {
-        setUploadedFiles(prev => 
-          prev.map((f, idx) => 
-            idx === fileIndex ? { 
-              ...f, 
-              status: 'error', 
-              error: 'Failed to hash file' 
+        setUploadedFiles(prev =>
+          prev.map((f, idx) =>
+            idx === fileIndex ? {
+              ...f,
+              status: 'error',
+              error: 'Failed to hash file'
             } : f
           )
         )
@@ -79,37 +79,108 @@ export function FileUpload() {
 
   const uploadToBlockchain = async (fileIndex: number) => {
     const file = uploadedFiles[fileIndex]
-    if (!file.hash || !contract) return
+    if (!file.hash || !account) return
 
-    setUploadedFiles(prev => 
-      prev.map((f, idx) => 
+    setUploadedFiles(prev =>
+      prev.map((f, idx) =>
         idx === fileIndex ? { ...f, status: 'uploading' } : f
       )
     )
 
     try {
-      // Create metadata string
-      const metadataString = JSON.stringify({
+      // Step 1: Upload file to IPFS
+      const formData = new FormData()
+      formData.append('file', file.file)
+      formData.append('userAddress', account)
+      formData.append('documentHash', file.hash)
+      formData.append('uploadType', 'document')
+
+      const ipfsResponse = await fetch('/api/ipfs/upload', {
+        method: 'POST',
+        body: formData
+      })
+
+      if (!ipfsResponse.ok) {
+        throw new Error('Failed to upload file to IPFS')
+      }
+
+      const ipfsResult = await ipfsResponse.json()
+      const ipfsHash = ipfsResult.data.ipfsHash
+
+      // Step 2: Upload metadata to IPFS
+      const documentMetadata = {
         ...metadata,
         fileName: file.file.name,
         fileSize: file.file.size,
         fileType: file.file.type,
         uploadedBy: account,
         uploadedAt: new Date().toISOString(),
+        documentHash: file.hash
+      }
+
+      const metadataBlob = new Blob([JSON.stringify(documentMetadata, null, 2)], {
+        type: 'application/json'
       })
 
-      // For demo purposes, we'll simulate the blockchain transaction
-      // In a real implementation, you would call the smart contract
-      await new Promise(resolve => setTimeout(resolve, 2000))
-      
-      const mockTxHash = `0x${CryptoJS.SHA256(file.hash + Date.now()).toString().slice(0, 64)}`
+      const metadataFormData = new FormData()
+      metadataFormData.append('file', metadataBlob, `metadata-${file.hash}.json`)
+      metadataFormData.append('userAddress', account)
+      metadataFormData.append('documentHash', file.hash)
+      metadataFormData.append('uploadType', 'metadata')
 
-      setUploadedFiles(prev => 
-        prev.map((f, idx) => 
-          idx === fileIndex ? { 
-            ...f, 
+      const metadataResponse = await fetch('/api/ipfs/upload', {
+        method: 'POST',
+        body: metadataFormData
+      })
+
+      if (!metadataResponse.ok) {
+        throw new Error('Failed to upload metadata to IPFS')
+      }
+
+      const metadataResult = await metadataResponse.json()
+      const metadataIpfsHash = metadataResult.data.ipfsHash
+
+      // Step 3: Store document in database
+      const documentData = {
+        documentHash: file.hash,
+        title: metadata.title,
+        description: metadata.description,
+        issuer: metadata.issuer,
+        issuerAddress: account,
+        owner: metadata.title, // In real app, this would be the recipient
+        ownerAddress: account, // In real app, this would be the recipient's address
+        category: metadata.category,
+        fileName: file.file.name,
+        fileSize: file.file.size,
+        fileType: file.file.type,
+        ipfsHash,
+        metadataIpfsHash,
+        blockchainTxHash: `0x${CryptoJS.SHA256(file.hash + Date.now()).toString().slice(0, 64)}`, // Mock for demo
+        blockNumber: Math.floor(Math.random() * 1000000) + 18000000 // Mock block number
+      }
+
+      const dbResponse = await fetch('/api/documents', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(documentData)
+      })
+
+      if (!dbResponse.ok) {
+        throw new Error('Failed to store document in database')
+      }
+
+      const dbResult = await dbResponse.json()
+
+      setUploadedFiles(prev =>
+        prev.map((f, idx) =>
+          idx === fileIndex ? {
+            ...f,
             status: 'success',
-            transactionHash: mockTxHash
+            transactionHash: documentData.blockchainTxHash,
+            ipfsHash,
+            metadataIpfsHash
           } : f
         )
       )
@@ -123,12 +194,13 @@ export function FileUpload() {
       })
 
     } catch (error) {
-      setUploadedFiles(prev => 
-        prev.map((f, idx) => 
-          idx === fileIndex ? { 
-            ...f, 
+      console.error('Upload error:', error)
+      setUploadedFiles(prev =>
+        prev.map((f, idx) =>
+          idx === fileIndex ? {
+            ...f,
             status: 'error',
-            error: 'Failed to upload to blockchain'
+            error: error instanceof Error ? error.message : 'Failed to upload to blockchain'
           } : f
         )
       )
@@ -161,7 +233,7 @@ export function FileUpload() {
         <AlertCircle className="mx-auto h-12 w-12 text-yellow-500 mb-4" />
         <h3 className="text-lg font-semibold mb-2">Access Restricted</h3>
         <p className="text-gray-600">
-          Only document issuers and users can upload documents. 
+          Only document issuers and users can upload documents.
           Please switch your role to access this feature.
         </p>
       </div>
@@ -173,14 +245,13 @@ export function FileUpload() {
       {/* Upload Area */}
       <div className="card">
         <h2 className="text-2xl font-bold text-gray-900 mb-6">Upload Documents</h2>
-        
+
         <div
           {...getRootProps()}
-          className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${
-            isDragActive
-              ? 'border-primary-500 bg-primary-50'
-              : 'border-gray-300 hover:border-gray-400'
-          }`}
+          className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer transition-colors ${isDragActive
+            ? 'border-primary-500 bg-primary-50'
+            : 'border-gray-300 hover:border-gray-400'
+            }`}
         >
           <input {...getInputProps()} />
           <Upload className="mx-auto h-12 w-12 text-gray-400 mb-4" />
@@ -224,6 +295,7 @@ export function FileUpload() {
                 value={metadata.category}
                 onChange={(e) => setMetadata(prev => ({ ...prev, category: e.target.value }))}
                 className="input-field"
+                title="Select document category"
               >
                 <option value="academic">Academic Certificate</option>
                 <option value="legal">Legal Document</option>
@@ -277,10 +349,11 @@ export function FileUpload() {
                       </p>
                     </div>
                   </div>
-                  
+
                   <div className="flex items-center space-x-2">
                     {file.status === 'pending' && file.hash && (
                       <button
+                        type="button"
                         onClick={() => uploadToBlockchain(index)}
                         className="btn-primary text-sm"
                         disabled={!metadata.title || !metadata.issuer}
@@ -289,6 +362,7 @@ export function FileUpload() {
                       </button>
                     )}
                     <button
+                      type="button"
                       onClick={() => removeFile(index)}
                       className="text-red-600 hover:text-red-800 text-sm"
                     >
@@ -296,7 +370,7 @@ export function FileUpload() {
                     </button>
                   </div>
                 </div>
-                
+
                 {file.hash && (
                   <div className="mt-3 p-3 bg-gray-50 rounded">
                     <div className="flex items-center space-x-2 mb-2">
@@ -306,7 +380,7 @@ export function FileUpload() {
                     <p className="text-xs font-mono text-gray-600 break-all">{file.hash}</p>
                   </div>
                 )}
-                
+
                 {file.transactionHash && (
                   <div className="mt-3 p-3 bg-green-50 rounded">
                     <div className="flex items-center space-x-2 mb-2">
@@ -316,7 +390,7 @@ export function FileUpload() {
                     <p className="text-xs font-mono text-green-600 break-all">{file.transactionHash}</p>
                   </div>
                 )}
-                
+
                 {file.error && (
                   <div className="mt-3 p-3 bg-red-50 rounded">
                     <p className="text-sm text-red-600">{file.error}</p>

@@ -5,6 +5,7 @@ A secure web application that uses blockchain technology to certify and verify a
 ## Features
 
 ### Core Functionalities
+
 - **Document Upload & Hashing**: Upload documents and generate blockchain-ready hashes
 - **Document Verification**: Verify document authenticity via hash lookup
 - **Role-Based Dashboards**: Different interfaces for Issuers, Verifiers, and Users
@@ -12,6 +13,7 @@ A secure web application that uses blockchain technology to certify and verify a
 - **Audit Trail**: Comprehensive logging of all document operations
 
 ### User Roles
+
 - **Issuers**: Universities, institutions that issue certificates
 - **Verifiers**: HR firms, organizations that verify documents
 - **Users**: Students, individuals who own and share documents
@@ -19,28 +21,33 @@ A secure web application that uses blockchain technology to certify and verify a
 ## Tech Stack
 
 ### Frontend
+
 - **Next.js 15** - React framework with App Router
 - **TypeScript** - Type-safe development
 - **Tailwind CSS** - Utility-first CSS framework
 - **Lucide React** - Icon library
 
 ### Blockchain & Web3
+
 - **Ethers.js** - Ethereum library for blockchain interaction
 - **Web3.js** - Alternative Web3 library
 - **MetaMask** - Web3 wallet integration
 
 ### Utilities
+
 - **CryptoJS** - Cryptographic functions for hashing
 - **React QR Code** - QR code generation
 - **React Dropzone** - File upload interface
 
 ### Planned Integrations
+
 - **Solidity** - Smart contracts for document storage
 - **IPFS** - Decentralized file storage
 - **MongoDB** - Off-chain metadata storage
 - **Node.js** - Backend API
 
 ## Color Scheme
+
 - **Primary**: Royal Blue (#1F3BB3)
 - **Secondary**: Silver (#BDC3C7)
 - **Background**: White (#FFFFFF)
@@ -48,24 +55,28 @@ A secure web application that uses blockchain technology to certify and verify a
 ## Getting Started
 
 ### Prerequisites
-- Node.js 18+ 
+
+- Node.js 18+
 - npm or yarn
 - MetaMask or compatible Web3 wallet
 
 ### Installation
 
 1. Clone the repository:
+
 ```bash
 git clone <repository-url>
 cd document-verification-blockchain-app
 ```
 
 2. Install dependencies:
+
 ```bash
 npm install
 ```
 
 3. Start the development server:
+
 ```bash
 npm run dev
 ```
@@ -73,6 +84,7 @@ npm run dev
 4. Open [http://localhost:3000](http://localhost:3000) in your browser
 
 ### Connecting Your Wallet
+
 1. Install MetaMask browser extension
 2. Create or import a wallet
 3. Connect to the application
@@ -81,6 +93,7 @@ npm run dev
 ## Usage
 
 ### For Document Issuers
+
 1. Connect your wallet and select "Issuer" role
 2. Navigate to "Upload Documents" tab
 3. Drag and drop or select files to upload
@@ -89,6 +102,7 @@ npm run dev
 6. Share the document hash or QR code with recipients
 
 ### For Document Verifiers
+
 1. Connect your wallet and select "Verifier" role
 2. Navigate to "Verify Documents" tab
 3. Enter document hash or upload the original file
@@ -96,6 +110,7 @@ npm run dev
 5. Check issuer authenticity and document status
 
 ### For Document Users
+
 1. Connect your wallet and select "User" role
 2. View your document collection in the dashboard
 3. Share documents via QR codes or direct links
@@ -104,12 +119,15 @@ npm run dev
 ## Demo Features
 
 The application includes demo data for testing:
+
 - Sample document hashes for verification
 - Mock blockchain transactions
 - Example certificates and metadata
 
 ### Demo Document Hashes
+
 Try verifying these sample hashes:
+
 - `a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456` - Bachelor's Degree
 - `b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456a1` - Professional Certificate
 
@@ -136,13 +154,16 @@ src/
 ## Development
 
 ### Available Scripts
+
 - `npm run dev` - Start development server
 - `npm run build` - Build for production
 - `npm run start` - Start production server
 - `npm run lint` - Run ESLint
 
 ### Environment Variables
+
 Create a `.env.local` file for environment-specific configuration:
+
 ```
 NEXT_PUBLIC_CONTRACT_ADDRESS=your_contract_address
 NEXT_PUBLIC_NETWORK_ID=your_network_id
@@ -162,24 +183,30 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 
 ## Roadmap
 
-### Phase 1 (Current)
+### Phase 1 ✅ (Completed)
+
 - ✅ Basic UI and file upload
 - ✅ Document hashing and verification
 - ✅ Role-based authentication
 - ✅ Certificate viewer with QR codes
+- ✅ Smart contract deployment scripts
+- ✅ IPFS integration for file storage
+- ✅ MongoDB backend for metadata
+- ✅ Advanced audit trails and analytics
+- ✅ Mobile responsiveness
+- ✅ Production deployment configuration
 
-### Phase 2 (Planned)
-- [ ] Smart contract deployment
-- [ ] IPFS integration for file storage
-- [ ] MongoDB backend for metadata
-- [ ] Advanced audit trails
+### Phase 2 (Future Enhancements)
 
-### Phase 3 (Future)
-- [ ] Multi-chain support
-- [ ] Batch operations
+- [ ] Multi-chain support (Polygon, BSC, Arbitrum)
+- [ ] Batch operations for bulk document processing
 - [ ] API for third-party integrations
-- [ ] Mobile application
+- [ ] Mobile application (React Native)
+- [ ] Advanced document templates
+- [ ] Multi-signature verification
+- [ ] Document expiration and renewal
+- [ ] Integration with external identity providers
 
 ## Support
 
-For support, email support@docverify.com or create an issue in the repository.
+For support, email <support@docverify.com> or create an issue in the repository.

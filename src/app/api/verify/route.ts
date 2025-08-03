@@ -1,62 +1,14 @@
 import { NextRequest, NextResponse } from 'next/server'
-
-// Mock verification data
-const mockVerificationLogs = [
-  {
-    id: '1',
-    documentHash: 'a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456',
-    verifierAddress: '0x3456789012345678901234567890123456789012',
-    verifiedAt: '2024-01-20T10:30:00Z',
-    result: 'valid',
-    ipAddress: '192.168.1.100'
-  },
-  {
-    id: '2',
-    documentHash: 'b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456a1',
-    verifierAddress: '0x4567890123456789012345678901234567890123',
-    verifiedAt: '2024-01-19T14:45:00Z',
-    result: 'valid',
-    ipAddress: '192.168.1.101'
-  }
-]
-
-const mockDocuments = [
-  {
-    hash: 'a1b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456',
-    title: 'Bachelor of Science Degree',
-    issuer: 'University of Technology',
-    owner: '0x1234567890123456789012345678901234567890',
-    category: 'academic',
-    issuedAt: '2024-01-15T10:30:00Z',
-    isActive: true,
-    metadata: {
-      description: 'Computer Science degree from University of Technology',
-      fileName: 'degree_certificate.pdf',
-      fileSize: 2048576,
-      fileType: 'application/pdf'
-    }
-  },
-  {
-    hash: 'b2c3d4e5f6789012345678901234567890abcdef1234567890abcdef123456a1',
-    title: 'Professional Certification',
-    issuer: 'Blockchain Institute',
-    owner: '0x2345678901234567890123456789012345678901',
-    category: 'business',
-    issuedAt: '2024-02-20T14:45:00Z',
-    isActive: true,
-    metadata: {
-      description: 'Certified Blockchain Developer',
-      fileName: 'blockchain_cert.pdf',
-      fileSize: 1536000,
-      fileType: 'application/pdf'
-    }
-  }
-]
+import connectDB from '@/lib/mongodb'
+import Document from '@/models/Document'
+import AuditLog from '@/models/AuditLog'
 
 export async function POST(request: NextRequest) {
   try {
+    await connectDB()
+
     const body = await request.json()
-    const { documentHash, verifierAddress } = body
+    const { documentHash, verifierAddress, userRole } = body
 
     if (!documentHash) {
       return NextResponse.json(
@@ -73,32 +25,52 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Find document in mock database
-    const document = mockDocuments.find(doc => doc.hash === documentHash)
-    
+    // Find document in database
+    const document = await Document.findOne({ documentHash })
+
     let verificationResult
+    let success = true
+
     if (document && document.isActive) {
+      // Increment verification count
+      await document.incrementVerification()
+
       verificationResult = {
         isValid: true,
         document: {
           title: document.title,
+          description: document.description,
           issuer: document.issuer,
+          issuerAddress: document.issuerAddress,
           owner: document.owner,
+          ownerAddress: document.ownerAddress,
           category: document.category,
           issuedAt: document.issuedAt,
-          metadata: document.metadata
+          fileName: document.fileName,
+          fileSize: document.fileSize,
+          fileType: document.fileType,
+          ipfsHash: document.ipfsHash,
+          verificationCount: document.verificationCount,
+          ageInDays: document.ageInDays
         },
         verifiedAt: new Date().toISOString(),
-        blockchainConfirmed: true
+        blockchainConfirmed: !!document.blockchainTxHash
       }
     } else if (document && !document.isActive) {
+      success = false
       verificationResult = {
         isValid: false,
         error: 'Document has been revoked',
         verifiedAt: new Date().toISOString(),
-        blockchainConfirmed: true
+        blockchainConfirmed: !!document.blockchainTxHash,
+        document: {
+          title: document.title,
+          issuer: document.issuer,
+          revokedAt: document.updatedAt
+        }
       }
     } else {
+      success = false
       verificationResult = {
         isValid: false,
         error: 'Document not found in blockchain',
@@ -108,23 +80,49 @@ export async function POST(request: NextRequest) {
     }
 
     // Log the verification attempt
-    const verificationLog = {
-      id: (mockVerificationLogs.length + 1).toString(),
+    const auditLog = await AuditLog.logAction(
+      'document_verified',
       documentHash,
-      verifierAddress: verifierAddress || 'anonymous',
-      verifiedAt: new Date().toISOString(),
-      result: verificationResult.isValid ? 'valid' : 'invalid',
-      ipAddress: request.headers.get('x-forwarded-for') || 'unknown'
-    }
-    mockVerificationLogs.push(verificationLog)
+      verifierAddress || 'anonymous',
+      {
+        userRole: userRole || 'verifier',
+        ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
+        userAgent: request.headers.get('user-agent') || 'unknown',
+        success,
+        errorMessage: success ? undefined : verificationResult.error,
+        metadata: {
+          documentFound: !!document,
+          documentActive: document?.isActive || false,
+          verificationCount: document?.verificationCount || 0
+        }
+      }
+    )
 
     return NextResponse.json({
       success: true,
       verification: verificationResult,
-      logId: verificationLog.id
+      logId: auditLog._id
     })
   } catch (error) {
     console.error('Error verifying document:', error)
+
+    // Log the failed verification attempt
+    try {
+      await AuditLog.logAction(
+        'document_verified',
+        body?.documentHash || 'unknown',
+        body?.verifierAddress || 'anonymous',
+        {
+          success: false,
+          errorMessage: 'Internal server error',
+          ipAddress: request.headers.get('x-forwarded-for') || 'unknown',
+          userAgent: request.headers.get('user-agent') || 'unknown'
+        }
+      )
+    } catch (logError) {
+      console.error('Failed to log verification error:', logError)
+    }
+
     return NextResponse.json(
       { success: false, error: 'Internal server error' },
       { status: 500 }
@@ -134,35 +132,72 @@ export async function POST(request: NextRequest) {
 
 export async function GET(request: NextRequest) {
   try {
+    await connectDB()
+
     const { searchParams } = new URL(request.url)
     const documentHash = searchParams.get('hash')
     const verifierAddress = searchParams.get('verifier')
-    const limit = parseInt(searchParams.get('limit') || '10')
+    const action = searchParams.get('action') || 'document_verified'
+    const limit = parseInt(searchParams.get('limit') || '50')
+    const page = parseInt(searchParams.get('page') || '1')
+    const timeframe = parseInt(searchParams.get('timeframe') || '30') // days
 
-    let filteredLogs = mockVerificationLogs
+    let query: any = { action }
+
+    // Add time filter
+    if (timeframe > 0) {
+      const startDate = new Date()
+      startDate.setDate(startDate.getDate() - timeframe)
+      query.timestamp = { $gte: startDate }
+    }
 
     // Filter by document hash if provided
     if (documentHash) {
-      filteredLogs = filteredLogs.filter(log => log.documentHash === documentHash)
+      query.documentHash = documentHash
     }
 
     // Filter by verifier address if provided
     if (verifierAddress) {
-      filteredLogs = filteredLogs.filter(log => 
-        log.verifierAddress.toLowerCase() === verifierAddress.toLowerCase()
-      )
+      query.userAddress = verifierAddress.toLowerCase()
     }
 
-    // Sort by most recent first and limit results
-    filteredLogs = filteredLogs
-      .sort((a, b) => new Date(b.verifiedAt).getTime() - new Date(a.verifiedAt).getTime())
-      .slice(0, limit)
+    // Execute query with pagination
+    const skip = (page - 1) * limit
+    const logs = await AuditLog.find(query)
+      .sort({ timestamp: -1 })
+      .limit(limit)
+      .skip(skip)
+      .lean()
+
+    const total = await AuditLog.countDocuments(query)
+
+    // Get additional statistics if requested
+    const includeStats = searchParams.get('stats') === 'true'
+    let stats = null
+
+    if (includeStats) {
+      const [actionStats, verificationStats] = await Promise.all([
+        AuditLog.getActionStats(timeframe),
+        AuditLog.getVerificationStats(timeframe)
+      ])
+
+      stats = {
+        actionBreakdown: actionStats,
+        verificationTrends: verificationStats,
+        totalLogs: total
+      }
+    }
 
     return NextResponse.json({
       success: true,
-      data: filteredLogs,
-      count: filteredLogs.length,
-      total: mockVerificationLogs.length
+      data: logs,
+      pagination: {
+        page,
+        limit,
+        total,
+        pages: Math.ceil(total / limit)
+      },
+      stats
     })
   } catch (error) {
     console.error('Error fetching verification logs:', error)

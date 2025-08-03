@@ -6,7 +6,19 @@
     "dev": "next dev",
     "build": "next build",
     "start": "next start",
-    "lint": "next lint"
+    "lint": "next lint",
+    "compile": "hardhat compile",
+    "test": "hardhat test",
+    "deploy:localhost": "hardhat run scripts/deploy.js --network localhost",
+    "deploy:sepolia": "hardhat run scripts/deploy.js --network sepolia",
+    "deploy:goerli": "hardhat run scripts/deploy.js --network goerli",
+    "deploy:mainnet": "hardhat run scripts/deploy.js --network mainnet",
+    "deploy:polygon": "hardhat run scripts/deploy.js --network polygon",
+    "deploy:mumbai": "hardhat run scripts/deploy.js --network mumbai",
+    "verify:sepolia": "hardhat run scripts/verify.js --network sepolia",
+    "verify:goerli": "hardhat run scripts/verify.js --network goerli",
+    "verify:mainnet": "hardhat run scripts/verify.js --network mainnet",
+    "node": "hardhat node"
   },
   "dependencies": {
     "react": "^18",
@@ -20,7 +32,10 @@
     "react-dropzone": "^14.2.9",
     "lucide-react": "^0.469.0",
     "clsx": "^2.1.1",
-    "tailwind-merge": "^2.5.4"
+    "tailwind-merge": "^2.5.4",
+    "ipfs-http-client": "^60.0.1",
+    "mongoose": "^8.0.3",
+    "dotenv": "^16.3.1"
   },
   "devDependencies": {
     "typescript": "^5",
@@ -30,8 +45,13 @@
     "@types/crypto-js": "^4.2.2",
     "@types/qrcode": "^1.5.5",
     "postcss": "^8",
+    "autoprefixer": "^10.4.16",
     "tailwindcss": "^3.4.1",
     "eslint": "^8",
-    "eslint-config-next": "15.4.5"
+    "eslint-config-next": "15.4.5",
+    "hardhat": "^2.19.2",
+    "@nomicfoundation/hardhat-toolbox": "^4.0.0",
+    "@nomicfoundation/hardhat-verify": "^2.0.2",
+    "hardhat-gas-reporter": "^1.0.9"
   }
 }

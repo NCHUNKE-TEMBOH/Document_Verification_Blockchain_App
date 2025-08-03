@@ -5,11 +5,12 @@ import { useWeb3 } from '@/contexts/Web3Context'
 import { FileUpload } from '@/components/upload/FileUpload'
 import { DocumentVerification } from '@/components/verification/DocumentVerification'
 import { RoleDashboard } from '@/components/dashboard/RoleDashboard'
-import { Shield, Upload, Search, Users } from 'lucide-react'
+import { AnalyticsDashboard } from '@/components/analytics/AnalyticsDashboard'
+import { Shield, Upload, Search, Users, BarChart3 } from 'lucide-react'
 
 export default function Home() {
   const { account, userRole, isConnected } = useWeb3()
-  const [activeTab, setActiveTab] = useState<'upload' | 'verify' | 'dashboard'>('upload')
+  const [activeTab, setActiveTab] = useState<'upload' | 'verify' | 'dashboard' | 'analytics'>('upload')
 
   if (!isConnected) {
     return (
@@ -60,36 +61,46 @@ export default function Home() {
 
       {/* Navigation Tabs */}
       <div className="mb-8">
-        <nav className="flex space-x-8">
+        <nav className="flex space-x-4 sm:space-x-8 overflow-x-auto">
           <button
+            type="button"
             onClick={() => setActiveTab('upload')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'upload'
-                ? 'border-primary-900 text-primary-900'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
+            className={`py-2 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${activeTab === 'upload'
+              ? 'border-primary-900 text-primary-900'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
           >
             Upload Documents
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab('verify')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'verify'
-                ? 'border-primary-900 text-primary-900'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
+            className={`py-2 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${activeTab === 'verify'
+              ? 'border-primary-900 text-primary-900'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
           >
             Verify Documents
           </button>
           <button
+            type="button"
             onClick={() => setActiveTab('dashboard')}
-            className={`py-2 px-1 border-b-2 font-medium text-sm ${
-              activeTab === 'dashboard'
-                ? 'border-primary-900 text-primary-900'
-                : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
-            }`}
+            className={`py-2 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${activeTab === 'dashboard'
+              ? 'border-primary-900 text-primary-900'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
           >
             Dashboard
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveTab('analytics')}
+            className={`py-2 px-1 border-b-2 font-medium text-sm whitespace-nowrap ${activeTab === 'analytics'
+              ? 'border-primary-900 text-primary-900'
+              : 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300'
+              }`}
+          >
+            Analytics
           </button>
         </nav>
       </div>
@@ -99,6 +110,7 @@ export default function Home() {
         {activeTab === 'upload' && <FileUpload />}
         {activeTab === 'verify' && <DocumentVerification />}
         {activeTab === 'dashboard' && <RoleDashboard />}
+        {activeTab === 'analytics' && <AnalyticsDashboard />}
       </div>
     </div>
   )

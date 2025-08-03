@@ -79,23 +79,34 @@ export function DocumentVerification() {
     setResult(null)
 
     try {
-      // Simulate blockchain lookup
-      await new Promise(resolve => setTimeout(resolve, 1500))
-
-      const document = mockDocuments.find(doc => doc.hash === hashInput.trim().toLowerCase())
-      
-      if (document) {
-        setResult({
-          isValid: true,
-          metadata: document.metadata
+      const response = await fetch('/api/verify', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          documentHash: hashInput.trim(),
+          verifierAddress: account || 'anonymous',
+          userRole: 'verifier'
         })
+      })
+
+      if (!response.ok) {
+        throw new Error('Verification request failed')
+      }
+
+      const data = await response.json()
+
+      if (data.success) {
+        setResult(data.verification)
       } else {
         setResult({
           isValid: false,
-          error: 'Document not found in blockchain. This document may not be registered or the hash is incorrect.'
+          error: data.error || 'Verification failed'
         })
       }
     } catch (error) {
+      console.error('Verification error:', error)
       setResult({
         isValid: false,
         error: 'Failed to verify document. Please try again.'
@@ -116,12 +127,12 @@ export function DocumentVerification() {
 
     try {
       const fileHash = await hashFile(selectedFile)
-      
+
       // Simulate blockchain lookup
       await new Promise(resolve => setTimeout(resolve, 1500))
 
       const document = mockDocuments.find(doc => doc.hash === fileHash)
-      
+
       if (document) {
         setResult({
           isValid: true,
@@ -169,35 +180,35 @@ export function DocumentVerification() {
     <div className="space-y-6">
       <div className="card">
         <h2 className="text-2xl font-bold text-gray-900 mb-6">Verify Document Authenticity</h2>
-        
+
         {/* Verification Method Selector */}
         <div className="mb-6">
           <div className="flex space-x-4">
             <button
+              type="button"
               onClick={() => {
                 setVerificationMethod('hash')
                 setResult(null)
                 setSelectedFile(null)
               }}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                verificationMethod === 'hash'
-                  ? 'bg-primary-900 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${verificationMethod === 'hash'
+                ? 'bg-primary-900 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
             >
               Verify by Hash
             </button>
             <button
+              type="button"
               onClick={() => {
                 setVerificationMethod('file')
                 setResult(null)
                 setHashInput('')
               }}
-              className={`px-4 py-2 rounded-lg font-medium transition-colors ${
-                verificationMethod === 'file'
-                  ? 'bg-primary-900 text-white'
-                  : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
-              }`}
+              className={`px-4 py-2 rounded-lg font-medium transition-colors ${verificationMethod === 'file'
+                ? 'bg-primary-900 text-white'
+                : 'bg-gray-100 text-gray-700 hover:bg-gray-200'
+                }`}
             >
               Verify by File Upload
             </button>
@@ -220,6 +231,7 @@ export function DocumentVerification() {
                   className="input-field flex-1 font-mono text-sm"
                 />
                 <button
+                  type="button"
                   onClick={verifyByHash}
                   disabled={isVerifying}
                   className="btn-primary flex items-center space-x-2"
@@ -251,9 +263,11 @@ export function DocumentVerification() {
                   type="file"
                   onChange={handleFileSelect}
                   accept=".pdf,.doc,.docx,.png,.jpg,.jpeg"
+                  title="Select document file to verify"
                   className="block w-full text-sm text-gray-500 file:mr-4 file:py-2 file:px-4 file:rounded-lg file:border-0 file:text-sm file:font-medium file:bg-primary-50 file:text-primary-700 hover:file:bg-primary-100"
                 />
                 <button
+                  type="button"
                   onClick={verifyByFile}
                   disabled={isVerifying || !selectedFile}
                   className="btn-primary flex items-center space-x-2"
@@ -388,6 +402,7 @@ export function DocumentVerification() {
                   <p className="text-xs text-gray-500">by {doc.metadata.issuer}</p>
                 </div>
                 <button
+                  type="button"
                   onClick={() => {
                     setHashInput(doc.hash)
                     setVerificationMethod('hash')
